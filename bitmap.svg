@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="40mm"
+   height="25mm"
+   viewBox="0 0 40 25"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1">
+    <rect
+       style="fill:#000000;fill-opacity:0;stroke-width:0.264583"
+       id="rect1"
+       width="38.092278"
+       height="22.892216"
+       x="0.78303349"
+       y="0.82909429" />
+    <rect
+       style="fill:#000000;fill-opacity:0;stroke:#000000;stroke-width:0.273047;stroke-opacity:1"
+       id="rect2"
+       width="39.33897"
+       height="24.326029"
+       x="0.35832441"
+       y="0.36408204" />
+    <text
+       xml:space="preserve"
+       style="font-size:7.21817px;writing-mode:lr-tb;direction:ltr;fill:#000000;fill-opacity:0;stroke:#000000;stroke-width:0.601513;stroke-opacity:1"
+       x="8.0106516"
+       y="7.6678896"
+       id="text2"><tspan
+         id="tspan2"
+         style="stroke-width:0.601513"
+         x="8.0106516"
+         y="7.6678896">{{title}}</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:2.34701px;writing-mode:lr-tb;direction:ltr;fill:#000000;fill-opacity:0;stroke:#000000;stroke-width:0.195584;stroke-opacity:1"
+       x="14.489235"
+       y="12.970224"
+       id="text3"><tspan
+         id="tspan3"
+         style="stroke-width:0.195584"
+         x="14.489235"
+         y="12.970224">{{author}}</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:4.22535px;writing-mode:lr-tb;direction:ltr;fill:#000000;fill-opacity:0;stroke:#000000;stroke-width:0.352112;stroke-opacity:1"
+       x="8.6486235"
+       y="22.550303"
+       id="text4"><tspan
+         id="tspan4"
+         style="stroke-width:0.352112"
+         x="8.6486235"
+         y="22.550303">R$ {{price}}</tspan></text>
+  </g>
+</svg>

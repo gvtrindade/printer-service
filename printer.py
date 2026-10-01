@@ -1,0 +1,91 @@
+import io
+
+import cairosvg
+import usb.core
+import usb.util
+from PIL import Image
+
+USB_VENDOR = 0x0FE6
+USB_PRODUCT = 0x8800
+PRINTER_DPI = 203
+LABEL_WIDTH_MM = 40
+LABEL_HEIGHT_MM = 25
+LABEL_WIDTH_PX = round(LABEL_WIDTH_MM / 25.4 * PRINTER_DPI)
+LABEL_HEIGHT_PX = round(LABEL_HEIGHT_MM / 25.4 * PRINTER_DPI)
+
+_INVERT = bytes(range(255, -1, -1))
+
+
+class PrinterError(Exception):
+    pass
+
+
+class PrinterNotFoundError(PrinterError):
+    pass
+
+
+class UsbWriteError(PrinterError):
+    pass
+
+
+def open_printer():
+    dev = usb.core.find(idVendor=USB_VENDOR, idProduct=USB_PRODUCT)
+    if dev is None:
+        raise PrinterNotFoundError("printer not found (USB 0fe6:8800)")
+    try:
+        if dev.is_kernel_driver_active(0):
+            dev.detach_kernel_driver(0)
+    except (usb.core.USBError, NotImplementedError):
+        pass
+    dev.set_configuration()
+    cfg = dev.get_active_configuration()
+    intf = cfg[(0, 0)]
+    ep_out = usb.util.find_descriptor(
+        intf,
+        custom_match=lambda e: usb.util.endpoint_direction(e.bEndpointAddress)
+        == usb.util.ENDPOINT_OUT,
+    )
+    if ep_out is None:
+        raise PrinterNotFoundError("no bulk OUT endpoint found on printer")
+    return dev, ep_out
+
+
+def render_label(svg_text: str) -> bytes:
+    png_data = cairosvg.svg2png(
+        bytestring=svg_text.encode(),
+        output_width=LABEL_WIDTH_PX,
+        output_height=LABEL_HEIGHT_PX,
+        background_color="white",
+    )
+    img = Image.open(io.BytesIO(png_data))
+    img = img.convert("RGB").convert("1", dither=Image.Dither.FLOYDSTEINBERG)
+    img = img.resize((LABEL_WIDTH_PX, LABEL_HEIGHT_PX), Image.Resampling.LANCZOS)
+
+    width_bytes = (img.width + 7) // 8
+    data = img.tobytes().translate(_INVERT)
+    total_bytes = width_bytes * img.height
+    hex_data = data.hex().upper()
+
+    return (
+        "^XA\r\n"
+        "^MNY\r\n"
+        f"^PW{LABEL_WIDTH_PX}\r\n"
+        f"^LL{LABEL_HEIGHT_PX}\r\n"
+        "^FO0,0\r\n"
+        f"^GFA,{total_bytes},{total_bytes},{width_bytes},{hex_data}\r\n"
+        "^FS\r\n"
+        "^PQ1\r\n"
+        "^XZ\r\n"
+    ).encode()
+
+
+def send_to_printer(zpl: bytes) -> None:
+    dev, ep_out = open_printer()
+    try:
+        dev.write(ep_out.bEndpointAddress, zpl, timeout=60000)
+    except usb.core.USBError as e:
+        raise UsbWriteError(f"USB write failed: {e}") from e
+
+
+def printer_is_available() -> bool:
+    return usb.core.find(idVendor=USB_VENDOR, idProduct=USB_PRODUCT) is not None
