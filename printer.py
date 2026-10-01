@@ -1,3 +1,4 @@
+import errno
 import io
 
 import cairosvg
@@ -37,7 +38,13 @@ def open_printer():
             dev.detach_kernel_driver(0)
     except (usb.core.USBError, NotImplementedError):
         pass
-    dev.set_configuration()
+    try:
+        dev.set_configuration()
+    except usb.core.USBError as e:
+        # EBUSY means the device is already configured (e.g. still claimed
+        # from a previous print) — the active configuration is usable.
+        if e.errno != errno.EBUSY:
+            raise
     cfg = dev.get_active_configuration()
     intf = cfg[(0, 0)]
     ep_out = usb.util.find_descriptor(
@@ -85,6 +92,8 @@ def send_to_printer(zpl: bytes) -> None:
         dev.write(ep_out.bEndpointAddress, zpl, timeout=60000)
     except usb.core.USBError as e:
         raise UsbWriteError(f"USB write failed: {e}") from e
+    finally:
+        usb.util.dispose_resources(dev)
 
 
 def printer_is_available() -> bool:
