@@ -2,9 +2,7 @@ from pydantic import BaseModel, HttpUrl, Field
 
 
 class Book(BaseModel):
-    id: str
     title: str
-    author: str
     price: float | None = None
 
 

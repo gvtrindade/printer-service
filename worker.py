@@ -2,8 +2,10 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 
+from book_service import create_book
 from models import Book
 from printer import render_label, send_to_printer, PrinterError
+from qr import make_qr_data_uri
 from templating import populate
 from webhook import send_webhook
 
@@ -20,15 +22,19 @@ class PrintJob:
 
 @dataclass
 class PrintResult:
-    printed_ids: list[str] = field(default_factory=list)
+    printed_ids: list[int] = field(default_factory=list)
     errors: list[dict] = field(default_factory=list)
 
 
-async def _print_one(job: PrintJob, book: Book) -> str | None:
-    svg_text = populate(job.template, book.model_dump())
+async def _print_one(job: PrintJob, book: Book) -> int:
+    book_id = await create_book()
+    data = book.model_dump()
+    data["id"] = book_id
+    data["qr"] = make_qr_data_uri(f"E:{book_id}")
+    svg_text = populate(job.template, data)
     zpl = await asyncio.to_thread(render_label, svg_text)
     await asyncio.to_thread(send_to_printer, zpl)
-    return book.id
+    return book_id
 
 
 async def _process_job(job: PrintJob) -> PrintResult:
@@ -38,11 +44,11 @@ async def _process_job(job: PrintJob) -> PrintResult:
             printed_id = await _print_one(job, book)
             result.printed_ids.append(printed_id)
         except PrinterError as e:
-            logger.error("job %s book %s failed: %s", job.job_id, book.id, e)
-            result.errors.append({"id": book.id, "error": str(e)})
+            logger.error("job %s book %r failed: %s", job.job_id, book.title, e)
+            result.errors.append({"title": book.title, "error": str(e)})
         except Exception as e:
-            logger.exception("job %s book %s unexpected error", job.job_id, book.id)
-            result.errors.append({"id": book.id, "error": str(e)})
+            logger.exception("job %s book %r unexpected error", job.job_id, book.title)
+            result.errors.append({"title": book.title, "error": str(e)})
     return result
 
 
