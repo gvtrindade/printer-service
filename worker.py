@@ -2,8 +2,8 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 
-from book_service import create_book
-from models import Book
+from product_service import create_product
+from models import Product
 from printer import render_label, send_to_printer, PrinterError
 from qr import make_qr_data_uri
 from templating import populate
@@ -17,7 +17,7 @@ class PrintJob:
     job_id: str
     callback_url: str
     template: str
-    books: list[Book]
+    products: list[Product]
 
 
 @dataclass
@@ -26,29 +26,29 @@ class PrintResult:
     errors: list[dict] = field(default_factory=list)
 
 
-async def _print_one(job: PrintJob, book: Book) -> int:
-    book_id = await create_book()
-    data = book.model_dump()
-    data["id"] = book_id
-    data["qr"] = make_qr_data_uri(f"E:{book_id}")
+async def _print_one(job: PrintJob, product: Product) -> int:
+    product_id = await create_product()
+    data = product.model_dump()
+    data["id"] = product_id
+    data["qr"] = make_qr_data_uri(f"E:{product_id}")
     svg_text = populate(job.template, data)
     zpl = await asyncio.to_thread(render_label, svg_text)
     await asyncio.to_thread(send_to_printer, zpl)
-    return book_id
+    return product_id
 
 
 async def _process_job(job: PrintJob) -> PrintResult:
     result = PrintResult()
-    for book in job.books:
+    for product in job.products:
         try:
-            printed_id = await _print_one(job, book)
+            printed_id = await _print_one(job, product)
             result.printed_ids.append(printed_id)
         except PrinterError as e:
-            logger.error("job %s book %r failed: %s", job.job_id, book.title, e)
-            result.errors.append({"title": book.title, "error": str(e)})
+            logger.error("job %s product %r failed: %s", job.job_id, product.title, e)
+            result.errors.append({"title": product.title, "error": str(e)})
         except Exception as e:
-            logger.exception("job %s book %r unexpected error", job.job_id, book.title)
-            result.errors.append({"title": book.title, "error": str(e)})
+            logger.exception("job %s product %r unexpected error", job.job_id, product.title)
+            result.errors.append({"title": product.title, "error": str(e)})
     return result
 
 

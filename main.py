@@ -47,10 +47,10 @@ async def print_labels(req: PrintRequest):
         job_id=req.job_id,
         callback_url=str(req.callback_url),
         template=svg_template,
-        books=req.books,
+        products=req.products,
     )
     await app.state.queue.put(job)
-    return PrintResponse(job_id=req.job_id, queued=len(req.books))
+    return PrintResponse(job_id=req.job_id, queued=len(req.products))
 
 
 @app.get("/health")

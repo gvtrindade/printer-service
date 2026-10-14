@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from models import Book
+from models import Product
 from worker import PrintJob, PrintResult, _process_job, _build_webhook_payload, worker
 
 
@@ -12,7 +12,7 @@ def _make_job(**overrides):
         job_id="test-job",
         callback_url="http://example.com/hook",
         template="<svg><text>{{title}}</text></svg>",
-        books=[Book(title="Dune", price="10")],
+        products=[Product(title="Dune", price="10")],
     )
     defaults.update(overrides)
     return PrintJob(**defaults)
@@ -21,7 +21,7 @@ def _make_job(**overrides):
 @pytest.mark.asyncio
 async def test_process_job_success():
     job = _make_job()
-    with patch("worker.create_book", new_callable=AsyncMock, return_value=123), \
+    with patch("worker.create_product", new_callable=AsyncMock, return_value=123), \
          patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer"):
         result = await _process_job(job)
@@ -31,9 +31,9 @@ async def test_process_job_success():
 
 @pytest.mark.asyncio
 async def test_process_job_continues_on_error():
-    job = _make_job(books=[
-        Book(title="Dune", price="10"),
-        Book(title="Foundation", price="12"),
+    job = _make_job(products=[
+        Product(title="Dune", price="10"),
+        Product(title="Foundation", price="12"),
     ])
     call_count = 0
 
@@ -44,8 +44,8 @@ async def test_process_job_continues_on_error():
             from printer import PrinterError
             raise PrinterError("fail")
 
-    create_book = AsyncMock(side_effect=[11, 22])
-    with patch("worker.create_book", create_book), \
+    create_product = AsyncMock(side_effect=[11, 22])
+    with patch("worker.create_product", create_product), \
          patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer", side_effect=fake_send):
         result = await _process_job(job)
@@ -57,21 +57,21 @@ async def test_process_job_continues_on_error():
 @pytest.mark.asyncio
 async def test_print_one_embeds_qr_from_new_id():
     job = _make_job()
-    book = Book(title="Dune", price="10")
+    product = Product(title="Dune", price="10")
     captured = {}
 
     def fake_populate(template, data):
         captured.update(data)
         return "<svg/>"
 
-    with patch("worker.create_book", new_callable=AsyncMock, return_value=123), \
+    with patch("worker.create_product", new_callable=AsyncMock, return_value=123), \
          patch("worker.make_qr_data_uri", return_value="data:image/png;base64,QR") as make_qr, \
          patch("worker.populate", side_effect=fake_populate), \
          patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer"):
         from worker import _print_one
 
-        printed_id = await _print_one(job, book)
+        printed_id = await _print_one(job, product)
 
     assert printed_id == 123
     make_qr.assert_called_once_with("E:123")
@@ -108,7 +108,7 @@ async def test_worker_processes_jobs_and_calls_webhook():
     job = _make_job()
     await queue.put(job)
 
-    with patch("worker.create_book", new_callable=AsyncMock, return_value=123), \
+    with patch("worker.create_product", new_callable=AsyncMock, return_value=123), \
          patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer"), \
          patch("worker.send_webhook", new_callable=AsyncMock) as mock_webhook:

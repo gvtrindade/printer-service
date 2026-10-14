@@ -33,12 +33,12 @@ def validate_template(svg_template: str) -> list[str]:
     return unknown
 
 
-def populate(svg_template: str, book: dict) -> str:
-    svg = _render_title(svg_template, str(book.get("title", "")))
+def populate(svg_template: str, product: dict) -> str:
+    svg = _render_title(svg_template, str(product.get("title", "")))
 
     def _replace(m: re.Match) -> str:
         field = m.group(1)
-        value = str(book.get(field, ""))
+        value = str(product.get(field, ""))
         return escape(value)
 
     return PLACEHOLDER_RE.sub(_replace, svg)

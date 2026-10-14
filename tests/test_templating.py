@@ -33,29 +33,29 @@ def test_validate_template_multiple_unknown():
 
 
 def test_populate_basic():
-    book = {"title": "Dune", "price": "12.99", "qr": "data:image/png;base64,AAAA"}
-    result = populate(SAMPLE_SVG, book)
+    product = {"title": "Dune", "price": "12.99", "qr": "data:image/png;base64,AAAA"}
+    result = populate(SAMPLE_SVG, product)
     assert "<text>Dune</text>" in result
     assert "<text>12.99</text>" in result
     assert 'xlink:href="data:image/png;base64,AAAA"' in result
 
 
 def test_populate_escapes_xml():
-    book = {"title": "A & B <C>", "price": "5", "qr": ""}
-    result = populate(SAMPLE_SVG, book)
+    product = {"title": "A & B <C>", "price": "5", "qr": ""}
+    result = populate(SAMPLE_SVG, product)
     assert "A &amp; B &lt;C&gt;" in result
 
 
 def test_populate_missing_field_empty():
-    book = {"title": "Dune"}
-    result = populate(SAMPLE_SVG, book)
+    product = {"title": "Dune"}
+    result = populate(SAMPLE_SVG, product)
     assert "<text></text>" in result
 
 
 def test_populate_handles_whitespace_in_placeholder():
     svg = "<svg><text>{{ title }}</text></svg>"
-    book = {"title": "Dune"}
-    result = populate(svg, book)
+    product = {"title": "Dune"}
+    result = populate(svg, product)
     assert "<text>Dune</text>" in result
 
 
@@ -75,7 +75,7 @@ def test_title_shrinks_for_very_long_titles():
     short = populate(TITLE_TEMPLATE, {"title": "Dune"})
     long = populate(
         TITLE_TEMPLATE,
-        {"title": "An Extremely Long Book Title That Cannot Possibly Fit"},
+        {"title": "An Extremely Long Product Title That Cannot Possibly Fit"},
     )
 
     def font_size(svg: str) -> float:

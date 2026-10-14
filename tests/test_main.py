@@ -24,7 +24,7 @@ async def test_print_endpoint_returns_202():
             "job_id": "job-123",
             "callback_url": "http://example.com/hook",
             "template": _b64("<svg><text>{{title}}</text></svg>"),
-            "books": [{"title": "Dune", "price": "10"}],
+            "products": [{"title": "Dune", "price": "10"}],
         }
         with patch("main.app.state") as mock_state:
             mock_queue = AsyncMock()
@@ -46,7 +46,7 @@ async def test_print_endpoint_rejects_unknown_placeholders():
             "job_id": "job-456",
             "callback_url": "http://example.com/hook",
             "template": _b64("<svg><text>{{unknown}}</text></svg>"),
-            "books": [{"title": "Dune", "price": "10"}],
+            "products": [{"title": "Dune", "price": "10"}],
         }
         resp = await client.post("/print", json=payload)
 
@@ -55,14 +55,14 @@ async def test_print_endpoint_rejects_unknown_placeholders():
 
 
 @pytest.mark.asyncio
-async def test_print_endpoint_rejects_empty_books():
+async def test_print_endpoint_rejects_empty_products():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         payload = {
             "job_id": "job-789",
             "callback_url": "http://example.com/hook",
             "template": _b64("<svg><text>{{title}}</text></svg>"),
-            "books": [],
+            "products": [],
         }
         resp = await client.post("/print", json=payload)
 
@@ -77,7 +77,7 @@ async def test_print_endpoint_rejects_invalid_base64():
             "job_id": "job-abc",
             "callback_url": "http://example.com/hook",
             "template": "not-valid-base64!!!",
-            "books": [{"title": "Dune", "price": "10"}],
+            "products": [{"title": "Dune", "price": "10"}],
         }
         resp = await client.post("/print", json=payload)
 
