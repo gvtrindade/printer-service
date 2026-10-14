@@ -50,7 +50,7 @@ def test_qr_placeholder_in_text_becomes_image():
     product = {"qr": "data:image/png;base64,AAAA"}
     result = populate(svg, product)
     assert "<text" not in result
-    assert '<image x="3.4" y="10.85" width="9" height="9"' in result
+    assert '<image x="3.4" y="9.6" width="10.25" height="10.25"' in result
     assert 'href="data:image/png;base64,AAAA"' in result
 
 

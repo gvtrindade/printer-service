@@ -1,5 +1,6 @@
 import errno
 import io
+import os
 
 import cairosvg
 import usb.core
@@ -13,6 +14,12 @@ LABEL_WIDTH_MM = 40
 LABEL_HEIGHT_MM = 25
 LABEL_WIDTH_PX = round(LABEL_WIDTH_MM / 25.4 * PRINTER_DPI)
 LABEL_HEIGHT_PX = round(LABEL_HEIGHT_MM / 25.4 * PRINTER_DPI)
+
+# Manual print registration (mm). The RP420 ignores ZPL label-home/top/shift
+# commands, so the design is shifted inside the rendered bitmap instead.
+# Positive X moves the design right, positive Y moves it down.
+PRINT_OFFSET_X_MM = float(os.getenv("PRINT_OFFSET_X_MM", "0"))
+PRINT_OFFSET_Y_MM = float(os.getenv("PRINT_OFFSET_Y_MM", "0"))
 
 _INVERT = bytes(range(255, -1, -1))
 
@@ -67,6 +74,13 @@ def render_label(svg_text: str) -> bytes:
     img = Image.open(io.BytesIO(png_data))
     img = img.convert("RGB").convert("1", dither=Image.Dither.FLOYDSTEINBERG)
     img = img.resize((LABEL_WIDTH_PX, LABEL_HEIGHT_PX), Image.Resampling.LANCZOS)
+
+    offset_x = round(PRINT_OFFSET_X_MM / 25.4 * PRINTER_DPI)
+    offset_y = round(PRINT_OFFSET_Y_MM / 25.4 * PRINTER_DPI)
+    if offset_x or offset_y:
+        canvas = Image.new("1", (LABEL_WIDTH_PX, LABEL_HEIGHT_PX), 1)
+        canvas.paste(img, (offset_x, offset_y))
+        img = canvas
 
     width_bytes = (img.width + 7) // 8
     data = img.tobytes().translate(_INVERT)

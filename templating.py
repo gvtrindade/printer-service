@@ -28,7 +28,7 @@ TITLE_RIGHT_MARGIN = 0.6
 TITLE_MAX_LINES = 3
 # Side length (SVG user units) of the square image generated when a template
 # puts the {{qr}} placeholder inside a <text> element.
-QR_IMAGE_SIZE = 9.0
+QR_IMAGE_SIZE = 10.25
 
 
 def validate_template(svg_template: str) -> list[str]:
