@@ -75,6 +75,11 @@ def render_label(svg_text: str) -> bytes:
 
     return (
         "^XA\r\n"
+        # Reset any stored registration so the graphic lands exactly on the
+        # label instead of inheriting a saved label-home/top/shift offset.
+        "^LH0,0\r\n"
+        "^LT0\r\n"
+        "^LS0\r\n"
         "^MNY\r\n"
         f"^PW{LABEL_WIDTH_PX}\r\n"
         f"^LL{LABEL_HEIGHT_PX}\r\n"

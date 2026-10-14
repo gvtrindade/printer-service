@@ -40,6 +40,34 @@ def test_populate_basic():
     assert 'xlink:href="data:image/png;base64,AAAA"' in result
 
 
+def test_qr_placeholder_in_text_becomes_image():
+    svg = (
+        '<svg viewBox="0 0 40 25">'
+        '<text x="3.4" y="19.85" style="font-size:4.2px">'
+        '<tspan x="3.4" y="19.85">{{qr}}</tspan></text>'
+        "</svg>"
+    )
+    product = {"qr": "data:image/png;base64,AAAA"}
+    result = populate(svg, product)
+    assert "<text" not in result
+    assert '<image x="3.4" y="10.85" width="9" height="9"' in result
+    assert 'href="data:image/png;base64,AAAA"' in result
+
+
+def test_qr_placeholder_in_image_is_untouched():
+    svg = '<svg><image xlink:href="{{qr}}"/></svg>'
+    result = populate(svg, {"qr": "data:image/png;base64,AAAA"})
+    assert result == svg.replace("{{qr}}", "data:image/png;base64,AAAA")
+
+
+def test_qr_in_text_keeps_other_text_placeholders():
+    svg = '<svg><text>{{title}}</text><text x="2" y="20">{{qr}}</text></svg>'
+    result = populate(svg, {"title": "Dune", "qr": "data:image/png;base64,AAAA"})
+    assert "<text>Dune</text>" in result
+    assert "<image" in result
+    assert "data:image/png;base64,AAAA" in result
+
+
 def test_populate_escapes_xml():
     product = {"title": "A & B <C>", "price": "5", "qr": ""}
     result = populate(SAMPLE_SVG, product)

@@ -26,6 +26,9 @@ MIN_TITLE_FONT_SIZE = 1.4
 TITLE_RIGHT_MARGIN = 0.6
 # Maximum number of wrapped title lines before the font is shrunk.
 TITLE_MAX_LINES = 3
+# Side length (SVG user units) of the square image generated when a template
+# puts the {{qr}} placeholder inside a <text> element.
+QR_IMAGE_SIZE = 9.0
 
 
 def validate_template(svg_template: str) -> list[str]:
@@ -36,12 +39,52 @@ def validate_template(svg_template: str) -> list[str]:
 def populate(svg_template: str, product: dict) -> str:
     svg = _render_title(svg_template, str(product.get("title", "")))
 
+    qr_value = str(product.get("qr", ""))
+    if qr_value:
+        svg = _render_qr(svg, qr_value)
+
     def _replace(m: re.Match) -> str:
         field = m.group(1)
         value = str(product.get(field, ""))
         return escape(value)
 
     return PLACEHOLDER_RE.sub(_replace, svg)
+
+
+def _render_qr(svg: str, qr_data_uri: str) -> str:
+    """Replace <text> elements holding {{qr}} with a square <image>.
+
+    A bitmap cannot be drawn inside a <text> element, so a template that puts
+    the {{qr}} placeholder in text would otherwise print the raw data URI. The
+    generated image is anchored at the text baseline, so it sits where the
+    placeholder used to be.
+    """
+
+    def _repl(m: re.Match) -> str:
+        block = m.group(0)
+        if "qr" not in PLACEHOLDER_RE.findall(block):
+            return block
+
+        open_tag_match = _OPEN_TAG_RE.match(block)
+        open_tag = open_tag_match.group(0) if open_tag_match else "<text>"
+        tspan_match = _TSPAN_TAG_RE.search(block)
+        geometry_source = tspan_match.group(0) if tspan_match else open_tag
+        x = _attr(_X_ATTR_RE, geometry_source)
+        y = _attr(_Y_ATTR_RE, geometry_source)
+        if x is None:
+            x = 0.0
+        if y is None:
+            y = QR_IMAGE_SIZE
+        top = max(0.0, y - QR_IMAGE_SIZE)
+        # ``href`` (SVG 2) is used instead of ``xlink:href`` so templates
+        # without an ``xmlns:xlink`` declaration keep working.
+        return (
+            f'<image x="{x:g}" y="{top:g}" width="{QR_IMAGE_SIZE:g}" '
+            f'height="{QR_IMAGE_SIZE:g}" preserveAspectRatio="xMidYMid meet" '
+            f'href="{escape(qr_data_uri)}"/>'
+        )
+
+    return _TEXT_BLOCK_RE.sub(_repl, svg)
 
 
 def _render_title(svg: str, title: str) -> str:
