@@ -12,7 +12,7 @@ def _make_job(**overrides):
         job_id="test-job",
         callback_url="http://example.com/hook",
         template="<svg><text>{{title}}</text></svg>",
-        products=[Product(title="Dune", price="10")],
+        products=[Product(id="p1", title="Dune", price="10")],
     )
     defaults.update(overrides)
     return PrintJob(**defaults)
@@ -25,15 +25,15 @@ async def test_process_job_success():
          patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer"):
         result = await _process_job(job)
-    assert result.printed_ids == [123]
+    assert result.printed_ids == ["p1"]
     assert result.errors == []
 
 
 @pytest.mark.asyncio
 async def test_process_job_continues_on_error():
     job = _make_job(products=[
-        Product(title="Dune", price="10"),
-        Product(title="Foundation", price="12"),
+        Product(id="p1", title="Dune", price="10"),
+        Product(id="p2", title="Foundation", price="12"),
     ])
     call_count = 0
 
@@ -49,7 +49,7 @@ async def test_process_job_continues_on_error():
          patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer", side_effect=fake_send):
         result = await _process_job(job)
-    assert result.printed_ids == [22]
+    assert result.printed_ids == ["p2"]
     assert len(result.errors) == 1
     assert result.errors[0]["title"] == "Dune"
 
@@ -57,7 +57,7 @@ async def test_process_job_continues_on_error():
 @pytest.mark.asyncio
 async def test_print_one_embeds_qr_from_new_id():
     job = _make_job()
-    product = Product(title="Dune", price="10")
+    product = Product(id="p1", title="Dune", price="10")
     captured = {}
 
     def fake_populate(template, data):
@@ -73,7 +73,7 @@ async def test_print_one_embeds_qr_from_new_id():
 
         printed_id = await _print_one(job, product)
 
-    assert printed_id == 123
+    assert printed_id == "p1"
     make_qr.assert_called_once_with("E:123")
     assert captured["id"] == 123
     assert captured["qr"] == "data:image/png;base64,QR"
@@ -82,22 +82,22 @@ async def test_print_one_embeds_qr_from_new_id():
 
 def test_build_webhook_payload_ok():
     job = _make_job()
-    result = PrintResult(printed_ids=[11, 22])
+    result = PrintResult(printed_ids=["p1", "p2"])
     payload = _build_webhook_payload(job, result)
-    assert payload == {"job_id": "test-job", "status": "ok", "ids": [11, 22]}
+    assert payload == {"job_id": "test-job", "status": "ok", "ids": ["p1", "p2"]}
 
 
 def test_build_webhook_payload_error():
     job = _make_job()
     result = PrintResult(
-        printed_ids=[11],
+        printed_ids=["p1"],
         errors=[{"title": "Foundation", "error": "fail"}],
     )
     payload = _build_webhook_payload(job, result)
     assert payload == {
         "job_id": "test-job",
         "status": "error",
-        "ids": [11],
+        "ids": ["p1"],
         "errors": [{"title": "Foundation", "error": "fail"}],
     }
 
@@ -124,4 +124,4 @@ async def test_worker_processes_jobs_and_calls_webhook():
     args = mock_webhook.call_args
     assert args[0][0] == "http://example.com/hook"
     assert args[0][1]["status"] == "ok"
-    assert args[0][1]["ids"] == [123]
+    assert args[0][1]["ids"] == ["p1"]

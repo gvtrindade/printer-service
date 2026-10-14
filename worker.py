@@ -22,19 +22,20 @@ class PrintJob:
 
 @dataclass
 class PrintResult:
-    printed_ids: list[int] = field(default_factory=list)
+    # Caller-assigned product ids from the print request (see models.Product).
+    printed_ids: list[str] = field(default_factory=list)
     errors: list[dict] = field(default_factory=list)
 
 
-async def _print_one(job: PrintJob, product: Product) -> int:
-    product_id = await create_product()
-    data = product.model_dump()
-    data["id"] = product_id
-    data["qr"] = make_qr_data_uri(f"E:{product_id}")
+async def _print_one(job: PrintJob, product: Product) -> str:
+    catalog_id = await create_product()
+    data = product.model_dump(exclude={"id"})
+    data["id"] = catalog_id
+    data["qr"] = make_qr_data_uri(f"E:{catalog_id}")
     svg_text = populate(job.template, data)
     zpl = await asyncio.to_thread(render_label, svg_text)
     await asyncio.to_thread(send_to_printer, zpl)
-    return product_id
+    return product.id
 
 
 async def _process_job(job: PrintJob) -> PrintResult:

@@ -2,6 +2,9 @@ from pydantic import BaseModel, HttpUrl, Field
 
 
 class Product(BaseModel):
+    # Identifier assigned by the caller (the web app). Echoed back in the
+    # print-result webhook so the caller can mark the product as printed.
+    id: str = Field(min_length=1)
     title: str
     price: float | None = None
 
