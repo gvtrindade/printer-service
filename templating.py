@@ -2,7 +2,7 @@ import re
 from xml.sax.saxutils import escape
 
 PLACEHOLDER_RE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
-ALLOWED_FIELDS = {"id", "title", "price", "qr"}
+ALLOWED_FIELDS = {"id", "title", "price", "qr", "e_id"}
 
 # Matches a full <text ...>...</text> element.
 _TEXT_BLOCK_RE = re.compile(r"<text\b[^>]*>.*?</text>", re.DOTALL)

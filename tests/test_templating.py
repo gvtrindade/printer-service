@@ -32,6 +32,16 @@ def test_validate_template_multiple_unknown():
     assert validate_template(svg) == ["bar", "foo"]
 
 
+def test_validate_template_allows_e_id():
+    svg = "<svg><text>{{e_id}}</text></svg>"
+    assert validate_template(svg) == []
+
+
+def test_populate_e_id():
+    result = populate("<svg><text>{{e_id}}</text></svg>", {"e_id": "12345"})
+    assert "<text>12345</text>" in result
+
+
 def test_populate_basic():
     product = {"title": "Dune", "price": "12.99", "qr": "data:image/png;base64,AAAA"}
     result = populate(SAMPLE_SVG, product)

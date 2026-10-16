@@ -12,7 +12,7 @@ def _make_job(**overrides):
         job_id="test-job",
         callback_url="http://example.com/hook",
         template="<svg><text>{{title}}</text></svg>",
-        products=[Product(id="p1", title="Dune", price="10")],
+        products=[Product(id="p1", title="Dune", price="10", external_id="123")],
     )
     defaults.update(overrides)
     return PrintJob(**defaults)
@@ -21,8 +21,7 @@ def _make_job(**overrides):
 @pytest.mark.asyncio
 async def test_process_job_success():
     job = _make_job()
-    with patch("worker.create_product", new_callable=AsyncMock, return_value=123), \
-         patch("worker.render_label", return_value=b"ZPL"), \
+    with patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer"):
         result = await _process_job(job)
     assert result.printed_ids == ["p1"]
@@ -32,8 +31,8 @@ async def test_process_job_success():
 @pytest.mark.asyncio
 async def test_process_job_continues_on_error():
     job = _make_job(products=[
-        Product(id="p1", title="Dune", price="10"),
-        Product(id="p2", title="Foundation", price="12"),
+        Product(id="p1", title="Dune", price="10", external_id="11"),
+        Product(id="p2", title="Foundation", price="12", external_id="22"),
     ])
     call_count = 0
 
@@ -44,9 +43,7 @@ async def test_process_job_continues_on_error():
             from printer import PrinterError
             raise PrinterError("fail")
 
-    create_product = AsyncMock(side_effect=[11, 22])
-    with patch("worker.create_product", create_product), \
-         patch("worker.render_label", return_value=b"ZPL"), \
+    with patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer", side_effect=fake_send):
         result = await _process_job(job)
     assert result.printed_ids == ["p2"]
@@ -55,17 +52,16 @@ async def test_process_job_continues_on_error():
 
 
 @pytest.mark.asyncio
-async def test_print_one_embeds_qr_from_new_id():
+async def test_print_one_embeds_external_id():
     job = _make_job()
-    product = Product(id="p1", title="Dune", price="10")
+    product = Product(id="p1", title="Dune", price="10", external_id="123")
     captured = {}
 
     def fake_populate(template, data):
         captured.update(data)
         return "<svg/>"
 
-    with patch("worker.create_product", new_callable=AsyncMock, return_value=123), \
-         patch("worker.make_qr_data_uri", return_value="data:image/png;base64,QR") as make_qr, \
+    with patch("worker.make_qr_data_uri", return_value="data:image/png;base64,QR") as make_qr, \
          patch("worker.populate", side_effect=fake_populate), \
          patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer"):
@@ -75,9 +71,32 @@ async def test_print_one_embeds_qr_from_new_id():
 
     assert printed_id == "p1"
     make_qr.assert_called_once_with("E:123")
-    assert captured["id"] == 123
+    assert captured["id"] == "123"
+    assert captured["e_id"] == "123"
     assert captured["qr"] == "data:image/png;base64,QR"
     assert captured["title"] == "Dune"
+
+
+@pytest.mark.asyncio
+async def test_print_one_falls_back_to_caller_id():
+    job = _make_job()
+    product = Product(id="p1", title="Dune", price="10")
+    captured = {}
+
+    def fake_populate(template, data):
+        captured.update(data)
+        return "<svg/>"
+
+    with patch("worker.make_qr_data_uri", return_value="data:image/png;base64,QR") as make_qr, \
+         patch("worker.populate", side_effect=fake_populate), \
+         patch("worker.render_label", return_value=b"ZPL"), \
+         patch("worker.send_to_printer"):
+        from worker import _print_one
+
+        await _print_one(job, product)
+
+    make_qr.assert_called_once_with("E:p1")
+    assert captured["e_id"] == "p1"
 
 
 def test_build_webhook_payload_ok():
@@ -108,8 +127,7 @@ async def test_worker_processes_jobs_and_calls_webhook():
     job = _make_job()
     await queue.put(job)
 
-    with patch("worker.create_product", new_callable=AsyncMock, return_value=123), \
-         patch("worker.render_label", return_value=b"ZPL"), \
+    with patch("worker.render_label", return_value=b"ZPL"), \
          patch("worker.send_to_printer"), \
          patch("worker.send_webhook", new_callable=AsyncMock) as mock_webhook:
         task = asyncio.create_task(worker(queue))

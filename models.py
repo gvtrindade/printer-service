@@ -7,6 +7,9 @@ class Product(BaseModel):
     id: str = Field(min_length=1)
     title: str
     price: float | None = None
+    # Catalog id reserved by the web app (Ziontech/megabazar). Rendered as
+    # {{e_id}} and encoded in the QR code.
+    external_id: str | None = None
 
 
 class PrintRequest(BaseModel):

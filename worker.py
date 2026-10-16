@@ -2,7 +2,6 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 
-from product_service import create_product
 from models import Product
 from printer import render_label, send_to_printer, PrinterError
 from qr import make_qr_data_uri
@@ -28,10 +27,14 @@ class PrintResult:
 
 
 async def _print_one(job: PrintJob, product: Product) -> str:
-    catalog_id = await create_product()
+    # The catalog id reserved upstream (Ziontech/megabazar) identifies the
+    # printed copy. Fall back to the caller id when it is missing so labels
+    # can still be produced.
+    external_id = product.external_id or product.id
     data = product.model_dump(exclude={"id"})
-    data["id"] = catalog_id
-    data["qr"] = make_qr_data_uri(f"E:{catalog_id}")
+    data["id"] = external_id
+    data["e_id"] = external_id
+    data["qr"] = make_qr_data_uri(f"E:{external_id}")
     svg_text = populate(job.template, data)
     zpl = await asyncio.to_thread(render_label, svg_text)
     await asyncio.to_thread(send_to_printer, zpl)
